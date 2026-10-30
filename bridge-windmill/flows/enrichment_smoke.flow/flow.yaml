@@ -1,0 +1,95 @@
+summary: Bridge enrichment smoke test
+description: Bridge owns fetching, extraction, validation, persistence and review.
+  Windmill orchestrates only.
+schema:
+  type: object
+  required:
+  - opportunity_id
+  - enrichment_job_id
+  properties:
+    opportunity_id:
+      type: string
+      format: uuid
+    enrichment_job_id:
+      type: string
+      format: uuid
+value:
+  modules:
+  - id: load
+    summary: Load opportunity
+    value:
+      type: rawscript
+      language: python3
+      content: "import json\nimport urllib.request\nimport urllib.error\nimport wmill\n\
+        \ndef main(enrichment_job_id: str, stage: str, opportunity_id: str = \"\"\
+        ):\n    base = wmill.get_variable(\"f/bridge/api_url\").rstrip(\"/\")\n  \
+        \  key = wmill.get_variable(\"f/bridge/worker_api_key\")\n    endpoint = f\"\
+        {base}/api/internal/enrichment-jobs/{enrichment_job_id}/{stage}\"\n    if\
+        \ stage == \"load\":\n        endpoint += f\"?opportunity_id={opportunity_id}\"\
+        \n    request = urllib.request.Request(endpoint, method=\"GET\" if stage ==\
+        \ \"load\" else \"POST\",\n        headers={\"X-Worker-Key\": key, \"Content-Type\"\
+        : \"application/json\"},\n        data=None if stage == \"load\" else b\"\
+        {}\")\n    try:\n        with urllib.request.urlopen(request, timeout=90)\
+        \ as response:\n            return json.load(response)\n    except urllib.error.HTTPError\
+        \ as exc:\n        raise RuntimeError(f\"Bridge {stage} failed ({exc.code}):\
+        \ {exc.read(1000).decode()}\") from exc\n"
+      input_transforms:
+        enrichment_job_id:
+          type: javascript
+          expr: flow_input.enrichment_job_id
+        stage:
+          type: static
+          value: load
+        opportunity_id:
+          type: javascript
+          expr: flow_input.opportunity_id
+  - id: smoke_complete
+    summary: Complete Bridge smoke job
+    value:
+      type: rawscript
+      language: python3
+      content: "import json\nimport urllib.request\nimport urllib.error\nimport wmill\n\
+        \ndef main(enrichment_job_id: str, stage: str, opportunity_id: str = \"\"\
+        ):\n    base = wmill.get_variable(\"f/bridge/api_url\").rstrip(\"/\")\n  \
+        \  key = wmill.get_variable(\"f/bridge/worker_api_key\")\n    endpoint = f\"\
+        {base}/api/internal/enrichment-jobs/{enrichment_job_id}/{stage}\"\n    if\
+        \ stage == \"load\":\n        endpoint += f\"?opportunity_id={opportunity_id}\"\
+        \n    request = urllib.request.Request(endpoint, method=\"GET\" if stage ==\
+        \ \"load\" else \"POST\",\n        headers={\"X-Worker-Key\": key, \"Content-Type\"\
+        : \"application/json\"},\n        data=None if stage == \"load\" else b\"\
+        {}\")\n    try:\n        with urllib.request.urlopen(request, timeout=90)\
+        \ as response:\n            return json.load(response)\n    except urllib.error.HTTPError\
+        \ as exc:\n        raise RuntimeError(f\"Bridge {stage} failed ({exc.code}):\
+        \ {exc.read(1000).decode()}\") from exc\n"
+      input_transforms:
+        enrichment_job_id:
+          type: javascript
+          expr: flow_input.enrichment_job_id
+        stage:
+          type: static
+          value: smoke_complete
+        opportunity_id:
+          type: javascript
+          expr: flow_input.opportunity_id
+  failure_module:
+    id: failure
+    summary: Report failure to Bridge
+    value:
+      type: rawscript
+      language: python3
+      content: "import json\nimport urllib.request\nimport wmill\n\ndef main(enrichment_job_id:\
+        \ str, error: dict):\n    base = wmill.get_variable(\"f/bridge/api_url\").rstrip(\"\
+        /\")\n    key = wmill.get_variable(\"f/bridge/worker_api_key\")\n    message\
+        \ = str(error.get(\"message\", error) if isinstance(error, dict) else error)[:4000]\n\
+        \    request = urllib.request.Request(\n        f\"{base}/api/internal/enrichment-jobs/{enrichment_job_id}/fail\"\
+        ,\n        data=json.dumps({\"error\": message}).encode(), method=\"POST\"\
+        ,\n        headers={\"X-Worker-Key\": key, \"Content-Type\": \"application/json\"\
+        })\n    with urllib.request.urlopen(request, timeout=30) as response:\n  \
+        \      return json.load(response)\n"
+      input_transforms:
+        enrichment_job_id:
+          type: javascript
+          expr: flow_input.enrichment_job_id
+        error:
+          type: javascript
+          expr: previous_result.error

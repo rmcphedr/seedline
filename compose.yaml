@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bridge
+      POSTGRES_USER: bridge
+      POSTGRES_PASSWORD: bridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - bridge_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bridge -d bridge"]
+      interval: 5s
+      retries: 10
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://bridge:bridge@db:5432/bridge
+      WINDMILL_URL: http://windmill_server:8000
+      APP_ENV: ${APP_ENV:-development}
+      ENABLE_DEMO_MODE: ${ENABLE_DEMO_MODE:-false}
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - default
+      - bridge_windmill
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.web
+    environment:
+      API_BASE_URL: http://api:8000
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      APP_ENV: ${APP_ENV:-development}
+      ENABLE_DEMO_MODE: ${ENABLE_DEMO_MODE:-false}
+      WINDMILL_PUBLIC_URL: ${WINDMILL_PUBLIC_URL:-http://localhost}
+      WINDMILL_WORKSPACE: ${WINDMILL_WORKSPACE:-bridge}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+volumes:
+  bridge_db:
+networks:
+  bridge_windmill:
+    external: true
+    name: bridge_windmill

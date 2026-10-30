@@ -1,0 +1,15 @@
+.env
+apps/web/.env.local
+**/.env
+**/.env.*
+!**/.env.example
+.DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.egg-info/
+node_modules/
+.next/
+*.tsbuildinfo

@@ -1,0 +1,87 @@
+# A seed list of discovery SOURCES, not verified currently-open awards.
+# Availability and eligibility must be established from program-level pages.
+sources:
+  - id: gc_grants
+    name: Government of Canada - Grants and Funding
+    url: https://www.canada.ca/en/government/grants-funding.html
+    kind: directory
+    domains: [canada.ca]
+    topics: [business, nonprofit, community]
+  - id: business_benefits
+    name: Business Benefits Finder
+    url: https://innovation.ised-isde.canada.ca/s/?language=en_CA
+    kind: directory
+    domains: [innovation.ised-isde.canada.ca]
+    topics: [business, startup, women]
+  - id: qc_funding
+    name: Quebec - Financial Assistance Finder
+    url: https://www.quebec.ca/entreprises-et-travailleurs-autonomes/rechercher-aide-financiere
+    kind: directory
+    domains: [quebec.ca]
+    topics: [business, nonprofit, Quebec]
+  - id: wage
+    name: Women and Gender Equality Canada - Funding Opportunities
+    url: https://www.canada.ca/en/women-gender-equality/funding/funding-opportunities.html
+    kind: official_provider
+    domains: [canada.ca]
+    topics: [women, gender-equality, nonprofit]
+  - id: wes_fund
+    name: Women Entrepreneurship Strategy Ecosystem Fund
+    url: https://www.ised-isde.canada.ca/site/ised/en/programs-and-initiatives/women-entrepreneurship-strategy/wes-ecosystem-fund
+    kind: official_provider
+    domains: [ised-isde.canada.ca]
+    topics: [women, entrepreneurial-support, nonprofit]
+  - id: esdc
+    name: Employment and Social Development Canada - Funding
+    url: https://www.canada.ca/en/employment-social-development/services/funding.html
+    kind: official_provider
+    domains: [canada.ca]
+    topics: [community, nonprofit, employment]
+  - id: ced_quebec
+    name: Canada Economic Development for Quebec Regions
+    url: https://www.canada.ca/en/economic-development-quebec-regions/financing-services.html
+    kind: official_provider
+    domains: [canada.ca]
+    topics: [business, nonprofit, Quebec]
+  - id: heritage
+    name: Canadian Heritage Funding Programs
+    url: https://pch-financement-funding.canada.ca/en-CA/fundingopportunities/
+    kind: directory
+    domains: [pch-financement-funding.canada.ca]
+    topics: [nonprofit, culture, community]
+  - id: bdc
+    name: BDC - Inclusive Entrepreneurship Loan
+    url: https://www.bdc.ca/en/financing/inclusive-entrepreneurship-loan
+    kind: official_provider
+    domains: [bdc.ca]
+    topics: [women, business, loan]
+  - id: desjardins
+    name: Desjardins - Fonds du Grand Mouvement
+    url: https://www.desjardins.com/fr/a-propos/communaute/developpement-collectif/fonds-grand-mouvement.html
+    kind: official_provider
+    domains: [desjardins.com]
+    topics: [community, nonprofit, Quebec]
+  - id: canadabuys
+    name: CanadaBuys - Procurement and Contracting Data
+    url: https://canadabuys.canada.ca/en/procurement-and-contracting-data
+    kind: official_provider
+    domains: [canadabuys.canada.ca]
+    topics: [business, procurement]
+  - id: fgm
+    name: Fondation du Grand Montréal - Programs
+    url: https://fgmtl.org/recevoir/programmes/
+    kind: official_provider
+    domains: [fgmtl.org]
+    topics: [nonprofit, charity, women, Montreal]
+  - id: centraide_mtl
+    name: Centraide du Grand Montréal - Support for Agencies
+    url: https://www.centraide-mtl.org/en/support-for-agencies-and-projects/
+    kind: official_provider
+    domains: [centraide-mtl.org]
+    topics: [nonprofit, poverty, community, Montreal]
+  - id: montreal
+    name: City of Montreal - Social Development Funding
+    url: https://montreal.ca/demarches/demander-un-soutien-financier-pour-un-projet-de-developpement-social
+    kind: official_provider
+    domains: [montreal.ca]
+    topics: [nonprofit, community, Montreal]
