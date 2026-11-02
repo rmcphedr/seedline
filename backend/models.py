@@ -377,3 +377,57 @@ class DemoSession(Timestamped, Base):
     founder_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("founders.id", ondelete="CASCADE"), index=True)
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AssistantConversation(Timestamped, Base):
+    __tablename__ = "assistant_conversations"
+    founder_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("founders.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    opportunity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("funding_programs.id", ondelete="SET NULL"))
+    mode: Mapped[str] = mapped_column(String(10), nullable=False)
+
+
+class AssistantMessage(Timestamped, Base):
+    __tablename__ = "assistant_messages"
+    conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assistant_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    target_field: Mapped[str | None] = mapped_column(String(60))
+    request_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True))
+    __table_args__ = (UniqueConstraint("conversation_id", "request_id"),)
+
+
+class AssistantSuggestion(Timestamped, Base):
+    __tablename__ = "assistant_suggestions"
+    conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assistant_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assistant_messages.id", ondelete="CASCADE"), nullable=False)
+    resource: Mapped[str] = mapped_column(String(30), nullable=False)
+    field: Mapped[str] = mapped_column(String(60), nullable=False)
+    value: Mapped[object] = mapped_column(PROFILE_JSON, nullable=False)
+    base_value: Mapped[object | None] = mapped_column(PROFILE_JSON)
+    confidence: Mapped[str] = mapped_column(String(12), nullable=False)
+    source_text: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(12), default="pending", nullable=False)
+
+
+class ProfileFieldProvenance(Timestamped, Base):
+    __tablename__ = "profile_field_provenance"
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    field: Mapped[str] = mapped_column(String(60), nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assistant_conversations.id", ondelete="SET NULL"))
+    __table_args__ = (UniqueConstraint("organization_id", "field"),)
+
+
+class AssistantUsage(Timestamped, Base):
+    __tablename__ = "assistant_usage"
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True))
+    provider: Mapped[str] = mapped_column(String(40), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    operation: Mapped[str] = mapped_column(String(40), nullable=False)
+    response_id: Mapped[str | None] = mapped_column(String(150))
+    prompt_tokens: Mapped[int] = mapped_column(default=0, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(default=0, nullable=False)
+    total_tokens: Mapped[int] = mapped_column(default=0, nullable=False)
+    raw_usage: Mapped[dict | None] = mapped_column(PROFILE_JSON)

@@ -1,12 +1,16 @@
 """Local-only demo profile API. Every read and write resolves the cookie server-side."""
 
 import os
+from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
+from backend import assistant_schemas as assistant_s
+from backend import assistant_service, recommendations
 from backend import onboarding as service
 from backend import onboarding_schemas as s
+from backend import recommendation_schemas as recommendation_s
 from backend.db import get_db
 
 
@@ -125,3 +129,47 @@ def patch_onboarding(data: s.OnboardingPatch, session=Depends(current_session), 
 @router.get("/completion", response_model=s.CompletionRead)
 def get_completion(session=Depends(current_session), db: Session = Depends(get_db)):
     return service.context(db, session)["completion"]
+
+
+@router.get("/recommendations", response_model=recommendation_s.RecommendationList)
+def list_recommendations(session=Depends(current_session), db: Session = Depends(get_db)):
+    return recommendations.list_for_session(db, session)
+
+
+@router.get("/recommendations/{opportunity_id}", response_model=recommendation_s.RecommendationRead)
+def get_recommendation(opportunity_id: UUID, session=Depends(current_session), db: Session = Depends(get_db)):
+    return recommendations.get_for_session(db, session, opportunity_id)
+
+
+@router.post("/assistant/conversations", response_model=assistant_s.ConversationRead, status_code=201)
+def start_assistant(data: assistant_s.StartConversation, session=Depends(current_session), db: Session = Depends(get_db)):
+    return assistant_service.start(db, session, data)
+
+
+@router.get("/assistant/conversations/{conversation_id}", response_model=assistant_s.ConversationRead)
+def get_assistant(conversation_id: UUID, session=Depends(current_session), db: Session = Depends(get_db)):
+    conversation = assistant_service.load_conversation(db, session, conversation_id)
+    return assistant_service.state(db, session, conversation)
+
+
+@router.get("/assistant/conversations/{conversation_id}/suggestions", response_model=list[assistant_s.SuggestionRead])
+def get_assistant_suggestions(conversation_id: UUID, session=Depends(current_session), db: Session = Depends(get_db)):
+    conversation = assistant_service.load_conversation(db, session, conversation_id)
+    return assistant_service.state(db, session, conversation)["suggestions"]
+
+
+@router.post("/assistant/conversations/{conversation_id}/messages", response_model=assistant_s.ConversationRead)
+def send_assistant_message(conversation_id: UUID, data: assistant_s.SendMessage,
+                           session=Depends(current_session), db: Session = Depends(get_db)):
+    return assistant_service.send(db, session, conversation_id, data)
+
+
+@router.post("/assistant/conversations/{conversation_id}/confirm", response_model=assistant_s.ConversationRead)
+def confirm_assistant(conversation_id: UUID, data: assistant_s.ConfirmSuggestions,
+                      session=Depends(current_session), db: Session = Depends(get_db)):
+    return assistant_service.confirm(db, session, conversation_id, data)
+
+
+@router.post("/assistant/conversations/{conversation_id}/skip", response_model=assistant_s.ConversationRead)
+def skip_assistant(conversation_id: UUID, session=Depends(current_session), db: Session = Depends(get_db)):
+    return assistant_service.skip(db, session, conversation_id)

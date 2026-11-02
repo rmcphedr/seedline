@@ -3,6 +3,7 @@
 import hashlib
 import secrets
 from datetime import UTC, timedelta
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -130,18 +131,38 @@ def context(db: Session, session: m.DemoSession) -> dict:
     }
 
 
-def patch_founder(db: Session, session: m.DemoSession, data: s.FounderPatch) -> dict:
+def mark_provenance(db: Session, session: m.DemoSession, fields: list[str], source: str,
+                    conversation_id: UUID | None = None) -> None:
+    for field in fields:
+        record = db.scalar(select(m.ProfileFieldProvenance).where(
+            m.ProfileFieldProvenance.organization_id == session.organization_id,
+            m.ProfileFieldProvenance.field == field,
+        ))
+        if record is None:
+            record = m.ProfileFieldProvenance(organization_id=session.organization_id, field=field, source=source,
+                                              conversation_id=conversation_id)
+            db.add(record)
+        else:
+            record.source = source
+            record.conversation_id = conversation_id
+
+
+def patch_founder(db: Session, session: m.DemoSession, data: s.FounderPatch, *, commit: bool = True,
+                  source: str = "manual", conversation_id: UUID | None = None) -> dict:
     founder, membership, *_ = load(db, session)
     for key, value in data.model_dump(exclude_unset=True).items():
         if key == "role":
             membership.role = value
         else:
             setattr(founder, key, str(value) if key == "linkedin_url" and value else value)
-    _commit(db)
+    mark_provenance(db, session, list(data.model_fields_set), source, conversation_id)
+    if commit:
+        _commit(db)
     return founder_read(founder, membership)
 
 
-def patch_organization(db: Session, session: m.DemoSession, data: s.OrganizationPatch) -> dict:
+def patch_organization(db: Session, session: m.DemoSession, data: s.OrganizationPatch, *, commit: bool = True,
+                       source: str = "manual", conversation_id: UUID | None = None) -> dict:
     _, _, organization, _, details, *_ = load(db, session)
     values = data.model_dump(exclude_unset=True)
     new_status = values.get("incorporation_status", organization.incorporation_status)
@@ -154,11 +175,14 @@ def patch_organization(db: Session, session: m.DemoSession, data: s.Organization
         details.years_in_operation = None
     for key, value in values.items():
         setattr(organization, "region" if key == "province" else key, str(value) if key == "website" and value else value)
-    _commit(db)
+    mark_provenance(db, session, list(values), source, conversation_id)
+    if commit:
+        _commit(db)
     return organization_read(organization)
 
 
-def patch_funding_intent(db: Session, session: m.DemoSession, data: s.FundingIntentPatch) -> m.FundingIntent:
+def patch_funding_intent(db: Session, session: m.DemoSession, data: s.FundingIntentPatch, *, commit: bool = True,
+                         source: str = "manual", conversation_id: UUID | None = None) -> m.FundingIntent:
     _, _, _, intent, *_ = load(db, session)
     values = data.model_dump(exclude_unset=True)
     amount_min = values.get("amount_min", intent.amount_min)
@@ -172,11 +196,14 @@ def patch_funding_intent(db: Session, session: m.DemoSession, data: s.FundingInt
         setattr(intent, key, value)
     if "amount_min" in values or "amount_max" in values:
         intent.amount_unsure = False
-    _commit(db)
+    mark_provenance(db, session, list(values), source, conversation_id)
+    if commit:
+        _commit(db)
     return intent
 
 
-def patch_details(db: Session, session: m.DemoSession, data: s.BusinessDetailsPatch) -> m.BusinessDetails:
+def patch_details(db: Session, session: m.DemoSession, data: s.BusinessDetailsPatch, *, commit: bool = True,
+                  source: str = "manual", conversation_id: UUID | None = None) -> m.BusinessDetails:
     _, _, organization, _, details, *_ = load(db, session)
     values = data.model_dump(exclude_unset=True)
     if organization.incorporation_status == "incorporated" and values.get("years_in_operation") is not None:
@@ -187,15 +214,20 @@ def patch_details(db: Session, session: m.DemoSession, data: s.BusinessDetailsPa
         details.previous_funding_details = None
     for key, value in values.items():
         setattr(details, key, value)
-    _commit(db)
+    mark_provenance(db, session, list(values), source, conversation_id)
+    if commit:
+        _commit(db)
     return details
 
 
-def patch_interests(db: Session, session: m.DemoSession, data: s.InterestsPatch) -> m.FounderInterests:
+def patch_interests(db: Session, session: m.DemoSession, data: s.InterestsPatch, *, commit: bool = True,
+                    source: str = "manual", conversation_id: UUID | None = None) -> m.FounderInterests:
     _, _, _, _, _, interests, _ = load(db, session)
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(interests, key, value)
-    _commit(db)
+    mark_provenance(db, session, list(data.model_fields_set), source, conversation_id)
+    if commit:
+        _commit(db)
     return interests
 
 

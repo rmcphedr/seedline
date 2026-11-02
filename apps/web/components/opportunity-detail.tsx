@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleHelp, ExternalLink, MapPin } from "lucide-react";
 import { applicantLabel, formatDeadline, publicSummary, type Opportunity } from "@/lib/api";
+import { fundingAmount } from "@/lib/recommendations";
 
 function date(value: string | null) { return value ? new Date(value).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) : "Unconfirmed"; }
 
@@ -8,7 +9,7 @@ export function OpportunityDetail({ item, admin = false }: { item: Opportunity; 
   return <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <Fact label="Funding type" value={item.funding_type} />
-      <Fact label="Funding amount" value={item.amount_min !== null || item.amount_max !== null ? `${item.currency || "Currency unconfirmed"} ${item.amount_min ?? "—"}–${item.amount_max ?? "—"}` : null} />
+      <Fact label="Funding amount" value={item.amount_min !== null || item.amount_max !== null ? fundingAmount(item) : null} />
       <Fact label="Geography" value={item.geography} />
       <Fact label="Applicants" value={applicantLabel(item)} />
       <Fact label="Application status" value={item.application_status === "unknown" ? null : item.application_status} />

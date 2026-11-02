@@ -12,6 +12,14 @@ type SaveState = "saved" | "saving" | "error";
 const resource: Record<DataKey, string> = { founder: "founder", organization: "organization", funding_intent: "funding-intent", details: "details", interests: "interests" };
 const inputClass = "mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100";
 const cardClass = "rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8";
+const fieldLabels: Record<string, string> = {
+  business_country: "Country", business_province: "Province or state", business_city: "City",
+  industry: "Search industries", business_stage: "Business stage", legal_structure: "Legal structure",
+  incorporation_status: "Incorporation status", year_established: "Year established",
+  funding_purposes: "What are you hoping to fund?", years_in_operation: "Years in operation",
+  employee_count: "Number of employees", annual_revenue_range: "Annual revenue range",
+  ownership_eligibility: "Ownership eligibility information",
+};
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return <div><div className="text-sm font-semibold text-slate-800">{label}</div>{hint && <p className="mt-1 text-xs leading-5 text-slate-500">{hint}</p>}{children}</div>;
@@ -38,7 +46,7 @@ function CountryField({ value, onChange }: { value: string | null; onChange: (va
 function MultiSelect({ label, hint, value, options, onChange, searchable = false }: { label: string; hint?: string; value: string[]; options: readonly (readonly [string, string])[]; onChange: (value: string[]) => void; searchable?: boolean }) {
   const [search, setSearch] = useState("");
   const shown = options.filter(([, title]) => title.toLowerCase().includes(search.toLowerCase()));
-  return <Field label={label} hint={hint}><div className="mt-3 rounded-xl border border-slate-200 p-3">{searchable && <input aria-label={`Search ${label.toLowerCase()}`} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search categories" className="mb-3 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-700"/>}<div className="flex flex-wrap gap-2">{shown.map(([id, title]) => { const selected = value.includes(id); return <button type="button" key={id} aria-pressed={selected} onClick={() => onChange(selected ? value.filter(item => item !== id) : [...value, id])} className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${selected ? "border-emerald-800 bg-emerald-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500 hover:text-emerald-800"}`}>{selected && <Check size={13} className="mr-1 inline"/>}{title}</button>; })}{shown.length === 0 && <p className="px-1 py-2 text-sm text-slate-500">No categories found</p>}</div></div></Field>;
+  return <Field label={label} hint={hint}><div aria-label={label} tabIndex={-1} className="mt-3 rounded-xl border border-slate-200 p-3">{searchable && <input aria-label={`Search ${label.toLowerCase()}`} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search categories" className="mb-3 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-700"/>}<div className="flex flex-wrap gap-2">{shown.map(([id, title]) => { const selected = value.includes(id); return <button type="button" key={id} aria-pressed={selected} onClick={() => onChange(selected ? value.filter(item => item !== id) : [...value, id])} className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${selected ? "border-emerald-800 bg-emerald-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500 hover:text-emerald-800"}`}>{selected && <Check size={13} className="mr-1 inline"/>}{title}</button>; })}{shown.length === 0 && <p className="px-1 py-2 text-sm text-slate-500">No categories found</p>}</div></div></Field>;
 }
 
 function NumberField({ label, value, onChange, placeholder }: { label: string; value: number | null; onChange: (value: number | null) => void; placeholder?: string }) {
@@ -49,7 +57,7 @@ function AnswerChoice({ label, value, onChange, hint }: { label: string; value: 
   return <SelectField label={label} hint={hint} value={value === null ? null : value ? "yes" : "no"} options={[["yes", "Yes"], ["no", "No"], ["unsure", "Unsure / not answered"]]} onChange={next => onChange(next === "yes" ? true : next === "no" ? false : null)}/>;
 }
 
-export function OnboardingWizard({ initialStep }: { initialStep?: SectionId }) {
+export function OnboardingWizard({ initialStep, initialField, returnTo }: { initialStep?: SectionId; initialField?: string; returnTo?: string }) {
   const router = useRouter();
   const [context, setContext] = useState<DemoContext | null>(null);
   const [step, setStep] = useState<SectionId>(initialStep ?? "founder_basics");
@@ -60,12 +68,22 @@ export function OnboardingWizard({ initialStep }: { initialStep?: SectionId }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const active = useRef<Promise<boolean> | null>(null);
   const revision = useRef(0);
+  const focusedField = useRef(false);
 
   useEffect(() => { loadDemo().then(async data => {
     setContext(data);
     setStep(initialStep ?? data.onboarding.current_step);
     if (initialStep && initialStep !== data.onboarding.current_step) await demoRequest("onboarding", "PATCH", { current_step: initialStep });
   }).catch(cause => setError(cause instanceof Error ? cause.message : "Could not load profile")).finally(() => setLoading(false)); }, [initialStep]);
+  useEffect(() => {
+    if (loading || !context || !initialField || focusedField.current || (initialStep && step !== initialStep)) return;
+    const label = fieldLabels[initialField];
+    if (!label) return;
+    const target = Array.from(document.querySelectorAll<HTMLElement>("[aria-label]")).find(element => element.getAttribute("aria-label") === label);
+    const fallback = initialField === "year_established" ? document.querySelector<HTMLElement>('[aria-label="Incorporation status"]') : null;
+    const element = target ?? fallback;
+    if (element) { focusedField.current = true; element.scrollIntoView({ block: "center" }); element.focus(); }
+  }, [context, initialField, initialStep, loading, step]);
   useEffect(() => {
     function warnBeforeUnload(event: BeforeUnloadEvent) {
       if (Object.keys(pending.current).length || active.current) event.preventDefault();
@@ -129,7 +147,7 @@ export function OnboardingWizard({ initialStep }: { initialStep?: SectionId }) {
         ...(sectionStatus ? { section_status: sectionStatus } : {}),
         ...(next === "dashboard" ? { onboarding_status: "finished" } : {}),
       });
-      if (next === "dashboard") { router.push("/dashboard"); router.refresh(); return; }
+      if (next === "dashboard") { router.push(returnTo ?? "/dashboard"); router.refresh(); return; }
       await demoRequest("onboarding", "PATCH", { current_step: next });
       setStep(next);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -156,8 +174,8 @@ export function OnboardingWizard({ initialStep }: { initialStep?: SectionId }) {
   const stepCompletion = context.completion.sections.find(section => section.id === step)?.completion ?? 0;
 
   return <div className="min-h-screen bg-[#f6f8f5] text-slate-900">
-    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8"><Link href="/explore" onClick={event => leave(event, "/explore")} className="flex items-center gap-2 text-xl font-bold tracking-tight"><span className="grid size-9 place-items-center rounded-xl bg-emerald-800 text-white"><Leaf size={20}/></span>Seedline<span className="text-emerald-700">.</span></Link><div className="flex items-center gap-4"><span className="hidden rounded-full bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800 sm:inline">Local demo mode</span><Link href="/dashboard" onClick={event => leave(event, "/dashboard")} className="text-sm font-semibold text-emerald-800 hover:underline">View dashboard</Link></div></div></header>
-    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-12"><div className="mb-9 flex flex-wrap items-end justify-between gap-5"><div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Your reusable business profile</div><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Let&apos;s get to know your business.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Answer what you can today. Your progress saves as you go, and you can return to any section.</p></div><div className="rounded-2xl border border-emerald-100 bg-white px-5 py-3 text-right"><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile coverage</div><div className="text-2xl font-semibold text-emerald-800">{context.completion.overall_completion}%</div></div></div>
+    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8"><Link href="/explore" onClick={event => leave(event, "/explore")} className="flex items-center gap-2 text-xl font-bold tracking-tight"><span className="grid size-9 place-items-center rounded-xl bg-emerald-800 text-white"><Leaf size={20}/></span>Seedline<span className="text-emerald-700">.</span></Link><div className="flex items-center gap-4"><span className="hidden rounded-full bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800 sm:inline">Local demo mode</span><Link href="/assistant" onClick={event => leave(event, "/assistant")} className="text-sm font-semibold text-emerald-800 hover:underline">Ask Seedline Assistant</Link><Link href="/dashboard" onClick={event => leave(event, "/dashboard")} className="text-sm font-semibold text-emerald-800 hover:underline">View dashboard</Link></div></div></header>
+    <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:py-12">{returnTo && <Link href={returnTo} onClick={event => leave(event, returnTo)} className="mb-5 inline-flex items-center gap-1 text-sm font-semibold text-emerald-800 hover:underline"><ArrowLeft size={15}/>Back to recommendation after saving</Link>}<div className="mb-9 flex flex-wrap items-end justify-between gap-5"><div><div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Your reusable business profile</div><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Let&apos;s get to know your business.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Answer what you can today. Your progress saves as you go, and you can return to any section.</p></div><div className="rounded-2xl border border-emerald-100 bg-white px-5 py-3 text-right"><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile coverage</div><div className="text-2xl font-semibold text-emerald-800">{context.completion.overall_completion}%</div></div></div>
       <div className="grid gap-8 lg:grid-cols-[255px_minmax(0,1fr)]"><aside className="lg:sticky lg:top-6 lg:self-start"><nav aria-label="Onboarding sections" className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-1">{SECTION_META.map((item, position) => { const activeStep = item.id === step; const score = context.completion.sections.find(section => section.id === item.id)?.completion ?? 0; return <button type="button" key={item.id} onClick={() => { void go(item.id); }} className={`rounded-xl border p-3 text-left transition sm:p-4 ${activeStep ? "border-emerald-700 bg-emerald-800 text-white shadow-md" : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"}`}><div className="flex items-center justify-between"><span className={`text-xs font-bold uppercase tracking-wider ${activeStep ? "text-emerald-100" : "text-emerald-700"}`}>0{position + 1}</span><span className={`text-xs font-semibold ${activeStep ? "text-emerald-100" : "text-slate-400"}`}>{score}%</span></div><div className="mt-2 text-sm font-semibold">{item.title}</div><div className={`mt-2 h-1 rounded-full ${activeStep ? "bg-emerald-600" : "bg-slate-100"}`}><div className={`h-1 rounded-full ${activeStep ? "bg-white" : "bg-emerald-700"}`} style={{ width: `${score}%` }}/></div></button>; })}</nav><button type="button" onClick={reset} className="mt-5 flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-emerald-800"><RotateCcw size={14}/>Start Fresh Demo</button></aside>
         <main><div className={cardClass}><div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-6"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Section {index + 1} of 5</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">{current.title}</h2><p className="mt-2 text-sm leading-6 text-slate-600">{current.description}</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">{stepCompletion}% filled</span></div>
           <div className="grid gap-6 py-7 sm:grid-cols-2">

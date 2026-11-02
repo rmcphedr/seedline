@@ -1,6 +1,8 @@
 # Bridge — AI Funding Navigator
 
 For the local Seedline founder profile and onboarding demo, see [Seedline founder onboarding](docs/seedline-onboarding.md).
+For personalized funding assessments, see [Founder funding recommendations](docs/seedline-recommendations.md).
+For mock and live conversational onboarding, see [Seedline Assistant](docs/seedline-assistant.md).
 
 Funding intelligence scaffold: a FastAPI service, PostgreSQL schema, Next.js admin dashboard, and an opt-in discovery worker. It records funding sources, stages unverified candidate URLs, tracks provider usage, and supports human review. No model calls run automatically.
 
